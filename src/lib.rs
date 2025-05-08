@@ -182,7 +182,7 @@ impl CliHistory {
             }
 
             'inner: loop {
-                term.write("\rCliHistoryPrompt: ".as_bytes()).unwrap();
+                term.write(format!("\r{} ", self.get_label()).as_bytes()).unwrap();
                 
                 if let Ok(key) = term.read_key() {
                     hooks.update(key); // Update the key state!
