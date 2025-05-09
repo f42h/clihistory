@@ -55,6 +55,18 @@ impl Hooks {
     fn is_enter(&self) -> bool {
         self.handle == KeyHandle::EnterKey(true)
     }
+
+    fn get_char(key: Key) -> Option<char> {
+        for i in 0..26 { 
+            // We want to iterate through the alphabet to determine which key might pressed
+            let c = (b'a' + i) as char;
+            if key == Key::Char(c) {
+                return Some(c)
+            }
+        }
+
+        None
+    }
 }
 
 struct InputData {
@@ -88,9 +100,14 @@ impl CliHistory {
         }
     }
 
-    fn set_label(&self) {
+    fn set_label(&self, ignore: bool) {
         // Show the user that we want some input!! 
-        print!("\r{} ", self.label);
+        if ignore {
+            print!("{} ", self.label);
+        } else {
+            print!("\r{} ", self.label);
+        }
+
         io::stdout().flush().unwrap();
     }
 
@@ -107,9 +124,9 @@ impl CliHistory {
         input.trim().to_string() 
     }
 
-    fn launch_prompt(&self) -> String {
+    fn launch_prompt(&self, ignore: bool) -> String {
         // Ask the user for input..
-        self.set_label();
+        self.set_label(ignore);
         self.stdin_string()
     }
 
@@ -142,7 +159,7 @@ impl CliHistory {
 
     pub fn history_fill(cli_history: &mut CliHistory) -> String {
         // Launch prompt
-        let input = cli_history.launch_prompt();
+        let input = cli_history.launch_prompt(true);
         // Fill history pool
         // Add everything typed to the input history
         cli_history.value_add_history(&input);
@@ -171,7 +188,7 @@ impl CliHistory {
 
         'outer: loop {
             input.clear();
-            input = self.launch_prompt();
+            input = self.launch_prompt(false);
 
             if !input.is_empty() {
                 self.value_add_history(&input);
@@ -185,7 +202,7 @@ impl CliHistory {
                 term.write(format!("\r{} ", self.get_label()).as_bytes()).unwrap();
                 
                 if let Ok(key) = term.read_key() {
-                    hooks.update(key); // Update the key state!
+                    hooks.update(key.clone()); // Update the key state!
 
                     if hooks.is_arrow_up() {
                         // Arrow up key was pressed: navigate from history last index to first
@@ -215,7 +232,23 @@ impl CliHistory {
                                 }
                             }
                         }
+                    } else if hooks.is_enter() {
+                        // FIXME: Need to detect enter!!
+                        break 'inner;
                     } else {
+                        if let Some(pressed_char) = Hooks::get_char(key) {
+                            term.write(pressed_char.to_string().as_bytes()).unwrap();
+                            
+                            let access_history = self.get_history();
+                            let history_len = access_history.len() - 1;
+                            let last_element = &access_history[history_len];
+                            let mut edit_last_element = String::from(pressed_char);
+
+                            edit_last_element.push_str(&last_element);
+
+                            let _ = std::mem::replace(&mut &access_history[history_len], &edit_last_element);
+                        }
+
                         break 'inner;
                     }
 
@@ -240,7 +273,7 @@ mod tests {
     fn test_prompt() {
         // Ensure the user is able to set the prompt lable and get the input data
         let prompt = CliHistory::new("myprompt:", false);
-        let input = prompt.launch_prompt();
+        let input = prompt.launch_prompt(true);
 
         println!("Value read from stdin: {}", input);
     }
