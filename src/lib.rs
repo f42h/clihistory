@@ -184,7 +184,8 @@ impl CliHistory {
         term.flush().unwrap();
     }
 
-    pub fn launch_navigator(&mut self) -> String {
+    pub fn launch_navigator<CommandCallback>(&mut self, callback: CommandCallback) -> String 
+    where CommandCallback: Fn(&str) {
         let mut term = Term::stdout();
         let mut hooks = Hooks::new();
         let mut input = String::new(); // Return the value selected by the user.
@@ -211,6 +212,7 @@ impl CliHistory {
 
             if !input.is_empty() {
                 self.value_add_history(&input);
+                callback(&input);
             }
 
             if self.die_on_exit && input == "exit".to_string() {
@@ -231,6 +233,7 @@ impl CliHistory {
 
                             if !input_data.data.is_empty() {
                                 self.print_prompt_history(&mut term, &input, input_data.len);
+                                callback(&input);
 
                                 if CliHistory::check_hook_enter(&term, &mut hooks) {
                                     break 'outer;
@@ -245,6 +248,7 @@ impl CliHistory {
 
                             if !input_data.data.is_empty() {
                                 self.print_prompt_history(&mut term, &input, input_data.len);
+                                callback(&input);
 
                                 if CliHistory::check_hook_enter(&term, &mut hooks) {
                                     break 'outer;
@@ -306,30 +310,14 @@ mod tests {
         dbg!(cli_history.get_history());
     }
 
-    #[test] 
-    fn test_navigator() {
-        // Initialize CliHistory with a custom prompt, in this case: CliHistoryPrompt:
-        let mut cli_history = CliHistory::new("CliHistoryPrompt:", false);
-        
-        loop {
-            let get_history_value = CliHistory::history_fill(&mut cli_history);
-            if get_history_value == "exit".to_string() { 
-                break;
-            }
-
-            println!("Value entered: {}", get_history_value); 
-        }
-
-        dbg!(cli_history.get_history());
-
-        let get_value = cli_history.launch_navigator();
-        println!("Final value: {}", get_value);
-    }
-
     #[test]
     fn test_general() {
         let mut cli_history = CliHistory::new("CliHistoryPrompt:", true);
-        let input = cli_history.launch_navigator();
+        let callback = |command: &str| {
+            dbg!(command);
+        };
+
+        let input = cli_history.launch_navigator(callback);
         dbg!(input);
     }
 }
