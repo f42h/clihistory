@@ -232,8 +232,8 @@ impl CliHistory {
                                 }
                             }
                         }
-                    } else if CliHistory::check_hook_enter(&term, &mut hooks) {
-                        break 'inner;
+                    } else if hooks.is_enter() {
+                        break 'outer;
                     } else {
                         if let Some(pressed_char) = Hooks::get_char(key) {
                             term.write(pressed_char.to_string().as_bytes()).unwrap();
