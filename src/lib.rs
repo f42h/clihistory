@@ -124,9 +124,12 @@ impl CliHistory {
         input.trim().to_string() 
     }
 
-    fn launch_prompt(&self, ignore: bool) -> String {
+    fn launch_prompt(&self, ignore: bool, no_lable: bool) -> String {
         // Ask the user for input..
-        self.set_label(ignore);
+        if !no_lable {
+            self.set_label(ignore);
+        }
+
         self.stdin_string()
     }
 
@@ -135,8 +138,8 @@ impl CliHistory {
         self.idx = self.history.len(); // Update the index
     }
 
-    pub fn get_history(&self) -> &Vec<String> {
-        &self.history // The user wants the history, we give access to the the history..
+    pub fn get_history(&mut self) -> &mut Vec<String> {
+        &mut self.history // The user wants the history, we give access to the the history..
     }
 
     fn history_iter_up(&mut self) -> Option<&String> {
@@ -159,7 +162,7 @@ impl CliHistory {
 
     pub fn history_fill(cli_history: &mut CliHistory) -> String {
         // Launch prompt
-        let input = cli_history.launch_prompt(true);
+        let input = cli_history.launch_prompt(true, false);
         // Fill history pool
         // Add everything typed to the input history
         cli_history.value_add_history(&input);
@@ -185,10 +188,26 @@ impl CliHistory {
         let mut term = Term::stdout();
         let mut hooks = Hooks::new();
         let mut input = String::new(); // Return the value selected by the user.
+        let mut switch = false;
+        let mut last_char: Option<char> = None;
 
         'outer: loop {
             input.clear();
-            input = self.launch_prompt(false);
+
+            if switch {
+                // Ignore the prompt label to avoid visual feedback issues..
+                input = self.launch_prompt(true, true);
+                
+                if !last_char.is_none() {
+                    if let Some(c) = last_char {
+                        // Construct the new input with the first char 
+                        input = format!("{}{}", c, input);
+                    }
+                }
+            } else {
+                // Display full prompt
+                input = self.launch_prompt(true, false);
+            }
 
             if !input.is_empty() {
                 self.value_add_history(&input);
@@ -237,15 +256,9 @@ impl CliHistory {
                     } else {
                         if let Some(pressed_char) = Hooks::get_char(key) {
                             term.write(pressed_char.to_string().as_bytes()).unwrap();
-                            
-                            let access_history = self.get_history();
-                            let history_len = access_history.len() - 1;
-                            let last_element = &access_history[history_len];
-                            let mut edit_last_element = String::from(pressed_char);
 
-                            edit_last_element.push_str(&last_element);
-
-                            let _ = std::mem::replace(&mut &access_history[history_len], &edit_last_element);
+                            last_char = Some(pressed_char);
+                            switch = true
                         }
 
                         break 'inner;
@@ -272,7 +285,7 @@ mod tests {
     fn test_prompt() {
         // Ensure the user is able to set the prompt lable and get the input data
         let prompt = CliHistory::new("myprompt:", false);
-        let input = prompt.launch_prompt(true);
+        let input = prompt.launch_prompt(true, false);
 
         println!("Value read from stdin: {}", input);
     }
