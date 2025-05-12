@@ -232,8 +232,7 @@ impl CliHistory {
                                 }
                             }
                         }
-                    } else if hooks.is_enter() {
-                        // FIXME: Need to detect enter!!
+                    } else if CliHistory::check_hook_enter(&term, &mut hooks) {
                         break 'inner;
                     } else {
                         if let Some(pressed_char) = Hooks::get_char(key) {
