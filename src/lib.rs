@@ -25,13 +25,16 @@
 extern crate console;
 
 use console::Term;
-use std::io::{self, BufRead, Write};
+use std::io::{self, stdout, Write};
 
 mod data;
 use data::InputData;
 
 mod hooks;
 use hooks::Hooks;
+
+mod prompt;
+use prompt::prompt;
 
 pub struct CliHistory {
     label: &'static str, // Customizable input label 
@@ -65,23 +68,18 @@ impl CliHistory {
         self.label
     }
 
-    fn stdin_string(&self) -> String {
-        let stdin = io::stdin();
-        let mut input = String::new();
-
-        // Read command from stdin
-        stdin.lock().read_line(&mut input).expect("Failed to read from stdin");
-        input.trim().to_string() 
-    }
-
-    fn launch_prompt(&self, ignore: bool, no_lable: bool) -> String {
+    fn launch_prompt(&self, ignore: bool, no_lable: bool, last_char: char) -> String {
         if !no_lable {
             // Ignore the prompt label
             self.set_label(ignore);
         }
 
         // Ask the user for input..
-        self.stdin_string()
+        if let Some(input) = prompt(self.label.to_string(), last_char) {
+            input
+        } else {
+            String::new()
+        }
     }
 
     fn value_add_history(&mut self, value: &str) {
@@ -111,16 +109,6 @@ impl CliHistory {
         None
     }
 
-    pub fn history_fill(cli_history: &mut CliHistory) -> String {
-        // Launch prompt
-        let input = cli_history.launch_prompt(true, false);
-        // Fill history pool
-        // Add everything typed to the input history
-        cli_history.value_add_history(&input);
-    
-        input // Give control over the last input value
-    }
-
     fn check_hook_enter(term: &Term, hooks: &mut Hooks) -> bool {
         if let Ok(key) = term.read_key() {
             hooks.update(key);
@@ -146,20 +134,24 @@ impl CliHistory {
         'outer: loop {
             input.clear();
 
-            if switch {
-                // Ignore the prompt label to avoid visual feedback issues..
-                input = self.launch_prompt(true, true);
-                
-                if !last_char.is_none() {
-                    if let Some(c) = last_char {
-                        // Construct the new input with the first char 
-                        input = format!("{}{}", c, input);
+            if let Some(c) = last_char {
+                if switch {
+                    // Ignore the prompt label to avoid visual feedback issues..
+                    input = self.launch_prompt(true, true, c);
+                        
+                    if !last_char.is_none() {
+                        if let Some(c) = last_char {
+                            // Construct the new input with the first char 
+                            input = format!("{}{}", c, input);
+                        }
                     }
+                } else {
+                    // Display full prompt
+                    input = self.launch_prompt(true, false, c);
                 }
-            } else {
-                // Display full prompt
-                input = self.launch_prompt(true, false);
             }
+
+            term.flush().unwrap();
 
             if !input.is_empty() {
                 self.value_add_history(&input);
@@ -168,6 +160,7 @@ impl CliHistory {
 
             if self.die_on_exit && input == "exit".to_string() {
                 // Initialized with die_on_exit set to true
+                stdout().flush().unwrap();
                 break 'outer;
             }
 
@@ -226,6 +219,7 @@ impl CliHistory {
                     }
 
                     if self.die_on_exit && input == "exit".to_string() {
+                        stdout().flush().unwrap();
                         break 'outer;
                     }
 
@@ -246,25 +240,9 @@ mod tests {
     fn test_prompt() {
         // Ensure the user is able to set the prompt lable and get the input data
         let prompt = CliHistory::new("myprompt:", false);
-        let input = prompt.launch_prompt(true, false);
+        let input = prompt.launch_prompt(true, false, ' ');
 
         println!("Value read from stdin: {}", input);
-    }
-
-    #[test] 
-    fn test_history_fill() {
-        let mut cli_history = CliHistory::new("CliHistoryPrompt:", false);
-        
-        loop {
-            let get_history_value = CliHistory::history_fill(&mut cli_history);
-            if get_history_value == "exit".to_string() {
-                break;
-            }
-
-            println!("Value entered: {}", get_history_value);
-        }
-
-        dbg!(cli_history.get_history());
     }
 
     #[test]
