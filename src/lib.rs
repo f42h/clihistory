@@ -1,87 +1,37 @@
+/* 
+* MIT License
+* 
+* Copyright (c) 2025 f42h
+* 
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+* 
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
 extern crate console;
 
-use console::{Term, Key};
+use console::Term;
 use std::io::{self, BufRead, Write};
 
-// History navigation instructions
-#[derive(Debug, PartialEq)]
-pub enum KeyHandle {
-    None,
-    ArrowKeyUp(bool),
-    ArrowKeyDown(bool),
-    EnterKey(bool)
-}
+mod data;
+use data::InputData;
 
-// Keyboard Hook handling
-pub struct Hooks {
-    handle: KeyHandle,
-}
-
-impl Hooks {
-    pub fn new() -> Self {
-        Hooks {
-            handle: KeyHandle::None,
-        }
-    }
-
-    // Update the current arrow key state 
-    pub fn update(&mut self, key: Key) {
-        match key {
-            Key::ArrowUp => {
-                self.handle = KeyHandle::ArrowKeyUp(true);
-            }
-            Key::ArrowDown => {
-                self.handle = KeyHandle::ArrowKeyDown(true);
-            }
-            Key::Enter => {
-                self.handle = KeyHandle::EnterKey(true);
-            }
-            _ => { // Reset only the keys that are not pressed
-                self.handle = KeyHandle::ArrowKeyUp(false);
-                self.handle = KeyHandle::ArrowKeyDown(false);
-                self.handle = KeyHandle::EnterKey(false);
-            }
-        }
-    }
-
-    pub fn is_arrow_up(&self) -> bool {
-        self.handle == KeyHandle::ArrowKeyUp(true)
-    }
-
-    pub fn is_arrow_down(&self) -> bool {
-        self.handle == KeyHandle::ArrowKeyDown(true)
-    }
-
-    fn is_enter(&self) -> bool {
-        self.handle == KeyHandle::EnterKey(true)
-    }
-
-    fn get_char(key: Key) -> Option<char> {
-        for i in 0..26 { 
-            // We want to iterate through the alphabet to determine which key might pressed
-            let c = (b'a' + i) as char;
-            if key == Key::Char(c) {
-                return Some(c)
-            }
-        }
-
-        None
-    }
-}
-
-struct InputData {
-    data: String,
-    len: usize
-}
-
-impl InputData {
-    fn new(data: String, len: usize) -> Self {
-        InputData { 
-            data, 
-            len 
-        }
-    }
-}
+mod hooks;
+use hooks::Hooks;
 
 pub struct CliHistory {
     label: &'static str, // Customizable input label 
@@ -119,17 +69,18 @@ impl CliHistory {
         let stdin = io::stdin();
         let mut input = String::new();
 
-        // Read from stdin and append the input to out history
+        // Read command from stdin
         stdin.lock().read_line(&mut input).expect("Failed to read from stdin");
         input.trim().to_string() 
     }
 
     fn launch_prompt(&self, ignore: bool, no_lable: bool) -> String {
-        // Ask the user for input..
         if !no_lable {
+            // Ignore the prompt label
             self.set_label(ignore);
         }
 
+        // Ask the user for input..
         self.stdin_string()
     }
 
@@ -139,7 +90,7 @@ impl CliHistory {
     }
 
     pub fn get_history(&mut self) -> &mut Vec<String> {
-        &mut self.history // The user wants the history, we give access to the the history..
+        &mut self.history 
     }
 
     fn history_iter_up(&mut self) -> Option<&String> {
@@ -216,6 +167,7 @@ impl CliHistory {
             }
 
             if self.die_on_exit && input == "exit".to_string() {
+                // Initialized with die_on_exit set to true
                 break 'outer;
             }
 
@@ -232,10 +184,11 @@ impl CliHistory {
                             input = input_data.data.clone();
 
                             if !input_data.data.is_empty() {
+                                // Write input data to stdout
                                 self.print_prompt_history(&mut term, &input, input_data.len);
 
                                 if CliHistory::check_hook_enter(&term, &mut hooks) {
-                                    callback(&input);
+                                    callback(&input); // Send input to caller
                                     break 'outer;
                                 }
                             }
@@ -247,10 +200,11 @@ impl CliHistory {
                             input = input_data.data.clone();
 
                             if !input_data.data.is_empty() {
+                                // Write input data to stdout
                                 self.print_prompt_history(&mut term, &input, input_data.len);
 
                                 if CliHistory::check_hook_enter(&term, &mut hooks) {
-                                    callback(&input);
+                                    callback(&input); // Send input to caller
                                     break 'outer;
                                 }
                             }
@@ -258,6 +212,9 @@ impl CliHistory {
                     } else if hooks.is_enter() {
                         break 'outer;
                     } else {
+                        // read_key() always ate the first char of the next command
+                        // so we need to determine what was typed to "restore" the input
+                        // eaten by read_key
                         if let Some(pressed_char) = Hooks::get_char(key) {
                             term.write(pressed_char.to_string().as_bytes()).unwrap();
 
