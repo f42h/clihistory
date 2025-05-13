@@ -31,7 +31,7 @@ path = "src/lib.rs"
 ```
 git clone https://github.com/f42h/clihistory.git
 ```
-- Add the `lib.rs` file to your `src` directory
+- Add the `clihistory/src/*.rs` files to your projects `src` directory
 
 ### How to
 - Import CliHistory
