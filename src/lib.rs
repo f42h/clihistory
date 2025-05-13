@@ -138,13 +138,7 @@ impl CliHistory {
                 if switch {
                     // Ignore the prompt label to avoid visual feedback issues..
                     input = self.launch_prompt(true, true, c);
-                        
-                    if !last_char.is_none() {
-                        if let Some(c) = last_char {
-                            // Construct the new input with the first char 
-                            input = format!("{}{}", c, input);
-                        }
-                    }
+                    input = format!("{}{}", c, input);
                 } else {
                     // Display full prompt
                     input = self.launch_prompt(true, false, c);
