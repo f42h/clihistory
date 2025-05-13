@@ -233,9 +233,9 @@ impl CliHistory {
 
                             if !input_data.data.is_empty() {
                                 self.print_prompt_history(&mut term, &input, input_data.len);
-                                callback(&input);
 
                                 if CliHistory::check_hook_enter(&term, &mut hooks) {
+                                    callback(&input);
                                     break 'outer;
                                 }
                             }
@@ -248,9 +248,9 @@ impl CliHistory {
 
                             if !input_data.data.is_empty() {
                                 self.print_prompt_history(&mut term, &input, input_data.len);
-                                callback(&input);
 
                                 if CliHistory::check_hook_enter(&term, &mut hooks) {
+                                    callback(&input);
                                     break 'outer;
                                 }
                             }
