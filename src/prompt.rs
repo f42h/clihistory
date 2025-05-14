@@ -107,7 +107,6 @@ pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
         term.clear_line().unwrap();
 
         command = collection.data.iter().collect::<String>();
-        //term.write(&format!("{} {}{}", label, last_char, command).as_bytes()).unwrap();
         term.write(&format!("{} {}", label, command).as_bytes()).unwrap();
 
         term.flush().unwrap();
