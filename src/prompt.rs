@@ -48,6 +48,15 @@ impl CharCollection {
     } 
 }
 
+fn cursor_manage(collection: &mut CharCollection, cursor: char) {
+    collection.data.retain(|&c| c != cursor); // Remove previous cursor from input vector
+                
+    if collection.idx <= collection.data.len() { 
+        // Insert new cursor in new position
+        collection.data.insert(collection.idx.clone(), cursor);
+    }
+}
+
 pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
     let mut collection = CharCollection::new();
     let mut term = Term::stdout();
@@ -56,11 +65,13 @@ pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
     term.hide_cursor().unwrap();
     let cursor = '|';
 
+    collection.data.insert(0, last_char);
+    collection.idx += 1;
+
     loop {
         let key = match term.read_key() {
             Ok(key) => key,
-            Err(err) => {
-                eprintln!("Failed to read key from stdin: {}", err);
+            Err(_) => {
                 return None;
             }
         };
@@ -77,16 +88,15 @@ pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
         } else if key == Key::ArrowLeft {
             if collection.idx > 0 {
                 collection.idx -= 1;
-                collection.data.retain(|&c| c != cursor); // Remove previous cursor from input vector
-                // Insert new cursor in new position
-                collection.data.insert(collection.idx.clone(), cursor);
+
+                cursor_manage(&mut collection, cursor);
                 term.move_cursor_left(1).unwrap(); // Move to the next char
             }
         } else if key == Key::ArrowRight {
             if collection.idx < collection.data.len() {
                 collection.idx += 1;        
-                collection.data.retain(|&c| c != cursor);
-                collection.data.insert(collection.idx.clone(), cursor);
+
+                cursor_manage(&mut collection, cursor);
                 term.move_cursor_right(1).unwrap();
             }
         } else if key == Key::Backspace {
@@ -97,7 +107,8 @@ pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
         term.clear_line().unwrap();
 
         command = collection.data.iter().collect::<String>();
-        term.write(&format!("{} {}{}", label, last_char, command).as_bytes()).unwrap();
+        //term.write(&format!("{} {}{}", label, last_char, command).as_bytes()).unwrap();
+        term.write(&format!("{} {}", label, command).as_bytes()).unwrap();
 
         term.flush().unwrap();
     }

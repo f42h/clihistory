@@ -138,7 +138,6 @@ impl CliHistory {
                 if switch {
                     // Ignore the prompt label to avoid visual feedback issues..
                     input = self.launch_prompt(true, true, c);
-                    input = format!("{}{}", c, input);
                 } else {
                     // Display full prompt
                     input = self.launch_prompt(true, false, c);
