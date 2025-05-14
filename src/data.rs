@@ -23,13 +23,13 @@
 */
 
 // Managing the input data
-pub struct InputData {
-    pub data: String,
-    pub len: usize
+pub(crate) struct InputData {
+    pub(crate) data: String,
+    pub(crate) len: usize
 }
 
 impl InputData {
-    pub fn new(data: String, len: usize) -> Self {
+    pub(crate) fn new(data: String, len: usize) -> Self {
         InputData { 
             data, 
             len 

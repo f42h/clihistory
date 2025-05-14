@@ -46,7 +46,7 @@ impl Hooks {
     }
 
     // Update the current arrow key state 
-    pub fn update(&mut self, key: Key) {
+    pub(crate) fn update(&mut self, key: Key) {
         match key {
             Key::ArrowUp => {
                 self.handle = KeyHandle::ArrowKeyUp(true);
@@ -66,19 +66,19 @@ impl Hooks {
         }
     }
 
-    pub fn is_arrow_up(&self) -> bool {
+    pub(crate) fn is_arrow_up(&self) -> bool {
         self.handle == KeyHandle::ArrowKeyUp(true)
     }
 
-    pub fn is_arrow_down(&self) -> bool {
+    pub(crate) fn is_arrow_down(&self) -> bool {
         self.handle == KeyHandle::ArrowKeyDown(true)
     }
 
-    pub fn is_enter(&self) -> bool {
+    pub(crate) fn is_enter(&self) -> bool {
         self.handle == KeyHandle::EnterKey(true)
     }
 
-    pub fn get_char(key: Key) -> Option<char> {
+    pub(crate) fn get_char(key: Key) -> Option<char> {
         for i in 0..26 { 
             // Iterate through the alphabet to determine the first pressed key
             let c = (b'a' + i) as char;
