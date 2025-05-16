@@ -76,9 +76,7 @@ pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
             }
         };
 
-        if key == Key::Enter {
-            break;
-        } else if key == Key::Char(' ') {
+        if key == Key::Char(' ') {
             // Insert space
             collection.data.insert(collection.idx, ' ');
             collection.idx += 1;
@@ -106,14 +104,23 @@ pub(crate) fn prompt(label: String, last_char: char) -> Option<String> {
         command.clear();
         term.clear_line().unwrap();
 
+
         command = collection.data.iter().collect::<String>();
         term.write(&format!("{} {}", label, command).as_bytes()).unwrap();
 
         term.flush().unwrap();
+
+        if key == Key::Enter {
+            // Remove cursor from command after enter
+            collection.data.retain(|&c| c != cursor);
+            command = collection.data.iter().collect::<String>();
+            term.write_line(&format!("\r{} {} ", label, command)).unwrap();
+
+            break;
+        }
     }
 
-    // Remove cursor from result
-    Some(command.replace(cursor, ""))
+    Some(command)
 }
 
 
