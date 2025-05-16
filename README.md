@@ -34,46 +34,48 @@ git clone https://github.com/f42h/clihistory.git
 - Add the `clihistory/src/*.rs` files to your projects `src` directory
 
 ### How to
-- Import CliHistory
+- Import CliHistory and CliHistorySettings
 ```rust
-use clihistory::CliHistory;
+use clihistory::{CliHistory, CliHistorySettings};
 ```
 
-#### Initialize CliHistory:
+- Specify settings for CliHistory
 ```rust
-pub fn new(label: &'static str, die_on_exit: bool) -> Self
+let mut settings = CliHistorySettings::new(); 
 ```
 
-- `label`: Specify a custom input prompt label
-- `die_on_exit`: Define if the user is able to quit the CLI due to the "exit" command
-
-#### To access retrieve the current command typed, we need to define a callback
-- Create a new variable to get the current command typed
+##### Available Settings:
+- Set a custom prompt
 ```rust
-let callback = |command: &str| {
-    dbg!(command); // This will display every command typed
-};
+pub fn set_label(&mut self, label: &'a str)
+``` 
+
+- Specify how many entries the history can contain until it will be cleared
+```rust
+// Default: 500
+pub fn set_max_size(&mut self, max_size: usize)
 ```
 
-#### We need to launch the navigator to start the core history functionality
+- Save commands to history file
 ```rust
-pub fn launch_navigator<CommandCallback>(&mut self, callback: CommandCallback) -> String 
+pub fn set_log_to_file(&mut self, file_path: &'a str)
 ```
 
+- Specify how many entries will be written to history file 
 ```rust
-// Execute the navigator to collect all commands typed
-let input = cli_history.launch_navigator(callback);
-dbg!(input);
+// Default: 500
+pub fn set_max_size_log_file(&mut self, max_size: usize)
 ```
 
-#### Retrieve and iterate through the history
+- Tell the navigator to stop when receiving the "exit" command
 ```rust
-// If we need the full history, we can get it with get_history()
-let history = cli_history.get_history();
+pub fn set_die_on_exit(&mut self)
+```
 
-for element in history {
-    println!("{}", element);
-}
+##### Initialize CliHistory:
+- Add settings to CliHistory
+```rust
+pub fn new(settings: &'a CliHistorySettings<'a>) -> Self 
 ```
 
 ### A Full Example
@@ -81,18 +83,23 @@ for element in history {
 use clihistory::CliHistory;
 
 fn main() {
-    // Initialize CliHistory with a custom prompt and specify if you 
-    // want the main operation to stop if the user inputs the "exit" command
-    let mut cli_history = CliHistory::new("CliHistoryPrompt:", true);
+    // Setup
+    let mut settings = CliHistorySettings::new();
+    settings.set_label("Enter some text:");
+    settings.set_max_size(100);
+    settings.set_die_on_exit();
+    settings.set_log_to_file("history.txt");
+    settings.set_max_size_log_file(100);
 
-    // The navigator will let the you navigate through the input history
-    // with the up/down arrow keys. Once a value from the history is selected,
-    // CliHistory will immediately return the selected value.
+    // Initialize
+    let mut cli_history = CliHistory::new(&settings);
+
+    // Start input prompt handler
     let input: String = cli_history.launch_navigator(|command: &str| {
-        dbg!(command);
+        dbg!(command); // Current command typed
     });
 
-    // Get the collected stdin data
+    // Get the collected data
     let history: &mut Vec<String> = cli_history.get_history();
 
     println!();
