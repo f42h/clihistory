@@ -80,7 +80,7 @@ pub fn new(settings: &'a CliHistorySettings<'a>) -> Self
 
 ### A Full Example
 ```rust
-use clihistory::CliHistory;
+use clihistory::{CliHistory, CliHistorySettings};
 
 fn main() {
     // Setup

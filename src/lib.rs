@@ -178,8 +178,10 @@ impl<'a> CliHistory<'a> {
         let mut file_stream = LogStream::new(self.settings.log_file_path.to_string());
         let mut log_count = 0;
 
-        if let Err(err) = file_stream.create_log_file() {
-            term.write_line(&format!("Error creating {}: {}", self.settings.log_file_path, err)).unwrap();
+        if !self.settings.log_file_path.is_empty() {
+            if let Err(err) = file_stream.create_log_file() {
+                term.write_line(&format!("Error creating {}: {}", self.settings.log_file_path, err)).unwrap();
+            }
         }
 
         'outer: loop {
@@ -202,7 +204,7 @@ impl<'a> CliHistory<'a> {
                 
                 if log_count <= self.settings.max_size_log_file {
                     if let Err(err) = file_stream.append_log_file(input.as_str()) {
-                        term.write_line(&format!("Error creating {}: {}", self.settings.log_file_path, err)).unwrap();
+                        term.write_line(&format!("Failed to append command to file: {}", err)).unwrap();
                     }
                     
                     log_count += 1;
