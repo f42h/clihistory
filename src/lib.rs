@@ -36,36 +36,77 @@ use hooks::Hooks;
 mod prompt;
 use prompt::prompt;
 
-pub struct CliHistory {
-    label: &'static str, // Customizable input label 
-    history: Vec<String>, // Data pool
-    idx: usize, // History pool data index
-    die_on_exit: bool // Immediate exit the main loop of history navigator
+mod log;
+use log::LogStream;
+
+pub struct CliHistorySettings<'a> {
+    label: &'a str,
+    max_size: usize,
+    max_size_log_file: usize,
+    die_on_exit: bool,
+    log_file_path: &'a str,
 }
 
-impl CliHistory {
-    pub fn new(label: &'static str, die_on_exit: bool) -> Self {
+impl<'a> CliHistorySettings<'a> {
+    pub fn new() -> Self {
+        CliHistorySettings { 
+            label: "CliHistoryPrompt: ",
+            max_size: 500,
+            max_size_log_file: 500,
+            die_on_exit: false,
+            log_file_path: "",
+        }
+    }
+
+    pub fn set_label(&mut self, label: &'a str) {
+        self.label = label;
+    }
+
+    pub fn set_max_size(&mut self, max_size: usize) {
+        self.max_size = max_size;
+    }
+
+    pub fn set_die_on_exit(&mut self) {
+        self.die_on_exit = true;
+    }
+
+    pub fn set_max_size_log_file(&mut self, max_size: usize) {
+        self.max_size_log_file = max_size
+    } 
+
+    pub fn set_log_to_file(&mut self, file_path: &'a str) {
+        self.log_file_path = file_path;
+    } 
+}
+
+pub struct CliHistory<'a> {
+    history: Vec<String>, // Data pool
+    idx: usize, // History pool data index
+    settings: &'a CliHistorySettings<'a>
+}
+
+impl<'a> CliHistory<'a> {
+    pub fn new(settings: &'a CliHistorySettings<'a>) -> Self {
         CliHistory {
-            label, // The input label for the final prompt
             history: Vec::new(), // Command pool
             idx: 0, // Need to navigate through the input history
-            die_on_exit
+            settings: settings
         }
     }
 
     fn set_label(&self, ignore: bool) {
         // Show the user that we want some input!! 
         if ignore {
-            print!("{} ", self.label);
+            print!("{} ", self.settings.label);
         } else {
-            print!("\r{} ", self.label);
+            print!("\r{} ", self.settings.label);
         }
 
         io::stdout().flush().unwrap();
     }
 
-    fn get_label(&self) -> &'static str {
-        self.label
+    fn get_label(&self) -> String {
+        self.settings.label.to_string()
     }
 
     fn launch_prompt(&self, ignore: bool, no_lable: bool, last_char: char) -> String {
@@ -75,7 +116,7 @@ impl CliHistory {
         }
 
         // Ask the user for input..
-        if let Some(input) = prompt(self.label.to_string(), last_char) {
+        if let Some(input) = prompt(self.settings.label.to_string(), last_char) {
             input
         } else {
             String::new()
@@ -83,6 +124,10 @@ impl CliHistory {
     }
 
     fn value_add_history(&mut self, value: &str) {
+        if self.idx == self.settings.max_size {
+            self.history = Vec::new()
+        }
+
         self.history.push(value.to_string()); // Add element to history
         self.idx = self.history.len(); // Update the index
     }
@@ -130,6 +175,12 @@ impl CliHistory {
         let mut input = String::new(); // Return the value selected by the user.
         let mut switch = false;
         let mut last_char: Option<char> = None;
+        let mut file_stream = LogStream::new(self.settings.log_file_path.to_string());
+        let mut log_count = 0;
+
+        if let Err(err) = file_stream.create_log_file() {
+            term.write_line(&format!("Error creating {}: {}", self.settings.log_file_path, err)).unwrap();
+        }
 
         'outer: loop {
             input.clear();
@@ -148,10 +199,19 @@ impl CliHistory {
 
             if !input.is_empty() {
                 self.value_add_history(&input);
+                
+                if log_count <= self.settings.max_size_log_file {
+                    if let Err(err) = file_stream.append_log_file(input.as_str()) {
+                        term.write_line(&format!("Error creating {}: {}", self.settings.log_file_path, err)).unwrap();
+                    }
+                    
+                    log_count += 1;
+                }
+
                 callback(&input);
             }
 
-            if self.die_on_exit && input == "exit".to_string() {
+            if self.settings.die_on_exit && input == "exit".to_string() {
                 // Initialized with die_on_exit set to true
                 stdout().flush().unwrap();
                 break 'outer;
@@ -211,7 +271,7 @@ impl CliHistory {
                         break 'inner;
                     }
 
-                    if self.die_on_exit && input == "exit".to_string() {
+                    if self.settings.die_on_exit && input == "exit".to_string() {
                         stdout().flush().unwrap();
                         break 'outer;
                     }
@@ -230,17 +290,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_prompt() {
-        // Ensure the user is able to set the prompt lable and get the input data
-        let prompt = CliHistory::new("myprompt:", false);
-        let input = prompt.launch_prompt(true, false, ' ');
-
-        println!("Value read from stdin: {}", input);
-    }
-
-    #[test]
     fn test_general() {
-        let mut cli_history = CliHistory::new("CliHistoryPrompt:", true);
+        let mut settings = CliHistorySettings::new();
+        settings.set_label("Enter some text: ");
+        settings.set_max_size(100);
+        settings.set_die_on_exit();
+
+        let mut cli_history = CliHistory::new(&settings);
         let callback = |command: &str| {
             dbg!(command);
         };
