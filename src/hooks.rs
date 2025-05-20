@@ -28,9 +28,9 @@ use console::Key;
 #[derive(Debug, PartialEq)]
 pub enum KeyHandle {
     None,
-    ArrowKeyUp(bool),
-    ArrowKeyDown(bool),
-    EnterKey(bool)
+    ArrowKeyUp,
+    ArrowKeyDown,
+    EnterKey
 }
 
 // Keyboard Hook handling
@@ -48,34 +48,23 @@ impl Hooks {
     // Update the current arrow key state 
     pub(crate) fn update(&mut self, key: Key) {
         match key {
-            Key::ArrowUp => {
-                self.handle = KeyHandle::ArrowKeyUp(true);
-            }
-            Key::ArrowDown => {
-                self.handle = KeyHandle::ArrowKeyDown(true);
-            }
-            Key::Enter => {
-                self.handle = KeyHandle::EnterKey(true);
-            }
-            _ => { 
-                // Reset the key states
-                self.handle = KeyHandle::ArrowKeyUp(false);
-                self.handle = KeyHandle::ArrowKeyDown(false);
-                self.handle = KeyHandle::EnterKey(false);
-            }
+            Key::ArrowUp => self.handle = KeyHandle::ArrowKeyUp,
+            Key::ArrowDown => self.handle = KeyHandle::ArrowKeyDown,
+            Key::Enter => self.handle = KeyHandle::EnterKey,
+            _ => self.handle = KeyHandle::None
         }
     }
 
     pub(crate) fn is_arrow_up(&self) -> bool {
-        self.handle == KeyHandle::ArrowKeyUp(true)
+        self.handle == KeyHandle::ArrowKeyUp
     }
 
     pub(crate) fn is_arrow_down(&self) -> bool {
-        self.handle == KeyHandle::ArrowKeyDown(true)
+        self.handle == KeyHandle::ArrowKeyDown
     }
 
     pub(crate) fn is_enter(&self) -> bool {
-        self.handle == KeyHandle::EnterKey(true)
+        self.handle == KeyHandle::EnterKey
     }
 
     pub(crate) fn get_char(key: Key) -> Option<char> {
